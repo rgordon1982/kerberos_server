@@ -26,6 +26,14 @@
 - name: Create the initial kerberos database
   shell: echo -e "{{ kerberos_server_master_db_pass }}\n{{ kerberos_server_master_db_pass }}" | kdb5_util create -s; touch /var/kerberos/db_created creates=/var/kerberos/db_created
 
-- name: Start the kerberos services 
-  service: name={{ item }} state=started enabled=yes
-  with_items: kerberos_service
+# Start the kerberos services 
+- name: Start krb5kdc service
+  service: name=krb5kdc state=started enabled=yes
+
+# if /var/kerberos/krb5kdc/kpropd.acl exists, do not try to start kadmin on this host as it is probably a slave
+- name: Check if slave (kpropd.acl exists)
+  stat: path=/var/kerberos/krb5kdc/kpropd.acl
+  register: st
+- name: Start kadmin service if not slave
+  service: name=kadmin state=started enabled=yes
+  when: st.stat.exists == False
